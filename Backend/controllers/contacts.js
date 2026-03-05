@@ -1,6 +1,6 @@
 const pool = require('../db');
 
-// Envoyer message
+// Envoyer message (public)
 exports.create = async (req, res) => {
   try {
     const { name, email, subject, message } = req.body;
@@ -15,7 +15,7 @@ exports.create = async (req, res) => {
   }
 };
 
-// Voir tous les messages (admin)
+// Voir tous les messages (admin, sans token)
 exports.getAll = async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');

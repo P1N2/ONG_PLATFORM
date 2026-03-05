@@ -12,10 +12,11 @@ const activitiesRoutes = require('./routes/activities');
 const imagesRoutes = require('./routes/images');
 const contactsRoutes = require('./routes/contacts');
 const adminsRoutes = require('./routes/admins');
+
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use('/api/admins', adminsRoutes);
+
 // Routes racine et test DB
 app.get('/', (req, res) => {
     res.send('Backend ONG fonctionne');

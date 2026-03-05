@@ -143,7 +143,6 @@ export default function Footer() {
         }
 
         .footer-links a::before {
-          content: '—';
           font-size: 0.7rem;
           color: #C0392B;
           transition: transform 0.3s;
@@ -294,11 +293,11 @@ export default function Footer() {
             </div>
             <div className="footer-contact-item">
               <span className="footer-contact-label">Téléphone</span>
-              <span className="footer-contact-value">+33 1 23 45 67 89</span>
+              <span className="footer-contact-value">+00 00 00 00</span>
             </div>
             <div className="footer-contact-item">
               <span className="footer-contact-label">Adresse</span>
-              <span className="footer-contact-value">12 rue de la Paix, Paris</span>
+              <span className="footer-contact-value">Aeroport Niamey</span>
             </div>
           </div>
 

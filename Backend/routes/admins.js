@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/admins');
 const { body, validationResult } = require('express-validator');
-const auth = require('../middlewares/auth');
 
 // ========== CREATE ADMIN ==========
 router.post(
