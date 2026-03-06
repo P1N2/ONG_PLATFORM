@@ -1,5 +1,16 @@
 const pool = require('../db');
 
+// GET toutes les activités (sans images)
+exports.getAll = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM activities ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // GET toutes les activités avec leurs images
 exports.getAllWithImages = async (req, res) => {
   try {
@@ -29,6 +40,28 @@ exports.create = async (req, res) => {
       [title, description, activity_date]
     );
     res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// UPDATE activité
+exports.update = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, activity_date } = req.body;
+
+    const result = await pool.query(
+      'UPDATE activities SET title = $1, description = $2, activity_date = $3 WHERE id = $4 RETURNING *',
+      [title, description, activity_date, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Activité introuvable' });
+    }
+
+    res.json(result.rows[0]);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Erreur serveur' });

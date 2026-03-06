@@ -196,7 +196,7 @@ export default async function Services() {
           Nos <em>Services</em>
         </h1>
         <p className="srv-hero-sub">
-          Découvrez l'ensemble de nos programmes et initiatives
+          Découvrez l&apos;ensemble de nos programmes et initiatives
           pensés pour transformer des vies, partout où le besoin se fait sentir.
         </p>
       </div>

@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/activities');
+const { requireAdmin } = require('../middleware/auth');
 
-// Route combinée pour toutes les activités avec images
+// Routes classiques (public)
+router.get('/', controller.getAll);
+
+// Route combinée pour toutes les activités avec images (public)
 router.get('/with-images', controller.getAllWithImages);
 
-// Routes classiques
-router.post('/', controller.create);
-router.delete('/:id', controller.remove);
+router.post('/', requireAdmin, controller.create);
+router.put('/:id', requireAdmin, controller.update);
+router.delete('/:id', requireAdmin, controller.remove);
 
 module.exports = router;

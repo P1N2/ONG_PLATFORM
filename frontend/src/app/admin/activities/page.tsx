@@ -1,8 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { type FormEvent, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getActivitiesWithImages } from "@/lib/api"
+import {
+  addActivityImage,
+  createActivity,
+  deleteActivity,
+  getActivitiesWithImages,
+  updateActivity,
+} from "@/lib/api"
 import Image from "next/image"
 
 type Activity = {
@@ -26,17 +32,122 @@ export default function AdminActivities() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState<string | null>(null)
+  const [saving, setSaving]         = useState(false)
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create")
+  const [editingId, setEditingId] = useState<number | null>(null)
+
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [activityDate, setActivityDate] = useState("")
+  const [imageUrls, setImageUrls] = useState("")
+
+  const refresh = async () => {
+    const data = await getActivitiesWithImages()
+    setActivities(data)
+  }
 
   useEffect(() => {
-    if (!localStorage.getItem("adminLogged")) {
+    if (!sessionStorage.getItem("adminLogged")) {
       router.push("/admin/login")
       return
     }
-    getActivitiesWithImages()
-      .then(setActivities)
+    refresh()
       .catch(() => setError("Impossible de récupérer les activités."))
       .finally(() => setLoading(false))
   }, [router])
+
+  const openCreate = () => {
+    setModalMode("create")
+    setEditingId(null)
+    setTitle("")
+    setDescription("")
+    setActivityDate("")
+    setImageUrls("")
+    setModalOpen(true)
+  }
+
+  const openEdit = (a: Activity) => {
+    setModalMode("edit")
+    setEditingId(a.id)
+    setTitle(a.title)
+    setDescription(a.description)
+    setActivityDate(a.activity_date?.slice(0, 10) ?? "")
+    setImageUrls("")
+    setModalOpen(true)
+  }
+
+  const closeModal = () => {
+    if (saving) return
+    setModalOpen(false)
+  }
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+
+    try {
+      if (modalMode === "create") {
+        const created = await createActivity({
+          title,
+          description,
+          activity_date: activityDate,
+        })
+
+        const urls = imageUrls
+          .split(/\r?\n|,/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+
+        await Promise.all(
+          urls.map((url) =>
+            addActivityImage({ activity_id: created.id, image_url: url })
+          )
+        )
+      } else if (editingId != null) {
+        await updateActivity(editingId, {
+          title,
+          description,
+          activity_date: activityDate,
+        })
+
+        const urls = imageUrls
+          .split(/\r?\n|,/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+
+        await Promise.all(
+          urls.map((url) => addActivityImage({ activity_id: editingId, image_url: url }))
+        )
+      }
+
+      await refresh()
+      setModalOpen(false)
+    } catch (err) {
+      console.error(err)
+      setError("Une erreur est survenue lors de l’enregistrement.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onDelete = async (id: number) => {
+    const ok = confirm("Supprimer cette activité ?")
+    if (!ok) return
+    setSaving(true)
+    setError(null)
+    try {
+      await deleteActivity(id)
+      await refresh()
+    } catch (err) {
+      console.error(err)
+      setError("Impossible de supprimer l’activité.")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <>
@@ -68,6 +179,27 @@ export default function AdminActivities() {
           text-transform: uppercase;
           color: #8C7B6B;
         }
+
+        .aa-btn {
+          border: 1px solid rgba(26,22,18,0.15);
+          background: #1A1612;
+          color: #F5F0E8;
+          padding: 0.7rem 1rem;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.72rem;
+          font-weight: 500;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: transform 0.15s, background 0.2s, opacity 0.2s;
+          white-space: nowrap;
+          height: 40px;
+          align-self: flex-start;
+        }
+        .aa-btn:hover { background: #2A241E; transform: translateY(-1px); }
+        .aa-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .aa-btn.secondary { background: transparent; color: #1A1612; }
+        .aa-btn.secondary:hover { background: rgba(26,22,18,0.06); }
 
         /* ── STATES ── */
         .aa-state {
@@ -246,14 +378,111 @@ export default function AdminActivities() {
           color: #8C7B6B;
           letter-spacing: 0.05em;
         }
+
+        .aa-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 0.5rem;
+        }
+        .aa-action {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: transparent;
+          color: #1A1612;
+          padding: 6px 10px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.68rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+        }
+        .aa-action:hover { background: rgba(26,22,18,0.06); }
+        .aa-action.danger { border-color: rgba(192,57,43,0.25); color: #C0392B; }
+        .aa-action.danger:hover { background: rgba(192,57,43,0.06); }
+        .aa-action:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* ── MODAL ── */
+        .aa-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1.25rem;
+          z-index: 50;
+        }
+        .aa-modal {
+          width: min(720px, 100%);
+          background: #F5F0E8;
+          border: 1px solid rgba(26,22,18,0.12);
+        }
+        .aa-modal-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem 1.25rem;
+          border-bottom: 1px solid rgba(26,22,18,0.10);
+        }
+        .aa-modal-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: #1A1612;
+        }
+        .aa-modal-close {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: transparent;
+          width: 34px;
+          height: 34px;
+          cursor: pointer;
+        }
+        .aa-form {
+          padding: 1.25rem;
+          display: grid;
+          gap: 1rem;
+        }
+        .aa-label {
+          display: grid;
+          gap: 6px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.72rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(26,22,18,0.65);
+        }
+        .aa-input, .aa-textarea {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: #fff;
+          padding: 0.7rem 0.75rem;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 300;
+          color: #1A1612;
+          outline: none;
+        }
+        .aa-textarea { resize: vertical; }
+        .aa-form-actions {
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+          padding-top: 0.5rem;
+        }
       `}</style>
 
       {/* ── HEADER ── */}
       <div className="aa-header">
-        <h1 className="aa-title">Nos <em>Activités</em></h1>
-        {!loading && !error && (
-          <span className="aa-count">{activities.length} activité{activities.length !== 1 ? "s" : ""}</span>
-        )}
+        <div>
+          <h1 className="aa-title">Nos <em>Activités</em></h1>
+          {!loading && !error && (
+            <span className="aa-count">{activities.length} activité{activities.length !== 1 ? "s" : ""}</span>
+          )}
+        </div>
+        <button className="aa-btn" onClick={openCreate} disabled={saving}>
+          Ajouter
+        </button>
       </div>
 
       {/* ── LOADING ── */}
@@ -324,11 +553,93 @@ export default function AdminActivities() {
                       {activity.images.length} photo{activity.images.length > 1 ? "s" : ""}
                     </span>
                   )}
+                  <div className="aa-actions">
+                    <button className="aa-action" onClick={() => openEdit(activity)} disabled={saving}>
+                      Modifier
+                    </button>
+                    <button
+                      className="aa-action danger"
+                      onClick={() => onDelete(activity.id)}
+                      disabled={saving}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
                 </div>
 
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── MODAL ── */}
+      {modalOpen && (
+        <div className="aa-modal-overlay" onClick={closeModal}>
+          <div className="aa-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="aa-modal-head">
+              <div className="aa-modal-title">
+                {modalMode === "create" ? "Ajouter une activité" : "Modifier l’activité"}
+              </div>
+              <button className="aa-modal-close" onClick={closeModal} disabled={saving}>
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={onSubmit} className="aa-form">
+              <label className="aa-label">
+                Titre
+                <input
+                  className="aa-input"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="aa-label">
+                Date
+                <input
+                  className="aa-input"
+                  type="date"
+                  value={activityDate}
+                  onChange={(e) => setActivityDate(e.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="aa-label">
+                Description
+                <textarea
+                  className="aa-textarea"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                  rows={5}
+                />
+              </label>
+
+              <label className="aa-label">
+                URLs d’images (optionnel, séparées par virgules ou lignes)
+                <textarea
+                  className="aa-textarea"
+                  value={imageUrls}
+                  onChange={(e) => setImageUrls(e.target.value)}
+                  rows={3}
+                  placeholder="https://... , https://..."
+                />
+              </label>
+
+              <div className="aa-form-actions">
+                <button type="button" className="aa-btn secondary" onClick={closeModal} disabled={saving}>
+                  Annuler
+                </button>
+                <button type="submit" className="aa-btn" disabled={saving}>
+                  {saving ? "Enregistrement..." : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </>

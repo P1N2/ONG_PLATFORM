@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
+import { useEffect, useState } from "react"
+
 
 const services = [
   {
@@ -23,6 +25,28 @@ const services = [
     icon: "◇",
   },
 ]
+
+const fallbackQuotes = [
+  {
+    author: "Mère Teresa",
+    text: "On ne peut pas toujours faire de grandes choses, mais on peut faire de petites choses avec un grand amour.",
+  },
+  {
+    author: "Nelson Mandela",
+    text: "L'éducation est l'arme la plus puissante que l'on puisse utiliser pour changer le monde.",
+  },
+  {
+    author: "Martin Luther King Jr.",
+    text: "La question la plus persistante et urgente de la vie est : Que faites-vous pour les autres ?",
+  },
+]
+
+type Testimonial = {
+  id: number
+  name: string
+  subject: string
+  message: string
+}
 
 export default function Home() {
   return (
@@ -349,6 +373,72 @@ export default function Home() {
           transform: translateY(0);
         }
 
+        /* ─── TÉMOIGNAGES ─── */
+        .testimonials {
+          padding: 0 5vw 6rem;
+          background: #F5F0E8;
+        }
+        .testimonials-header {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          padding-bottom: 1.5rem;
+          margin-bottom: 1.5rem;
+          border-bottom: 1px solid rgba(26,22,18,0.12);
+        }
+        .testimonials-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.6rem;
+          font-weight: 700;
+          color: var(--ink);
+        }
+        .testimonials-tag {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.7rem;
+          font-weight: 500;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--warm-gray);
+        }
+        .testimonials-strip {
+          display: flex;
+          gap: 1rem;
+          overflow-x: auto;
+          padding-bottom: 0.5rem;
+          scrollbar-width: thin;
+        }
+        .testimonial-card {
+          min-width: 260px;
+          max-width: 320px;
+          background: #FFFFFF;
+          border: 1px solid rgba(26,22,18,0.08);
+          padding: 1.5rem 1.75rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .testimonial-subject {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.7rem;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: #C0392B;
+        }
+        .testimonial-message {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 300;
+          color: #1A1612;
+          line-height: 1.7;
+        }
+        .testimonial-author {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.8rem;
+          font-weight: 400;
+          color: var(--warm-gray);
+        }
+
         /* ─── CTA ─── */
         .cta-section {
           margin: 0 5vw 8rem;
@@ -513,6 +603,24 @@ export default function Home() {
                 <div className="service-arrow">→</div>
               </motion.div>
             ))}
+          </div>
+        </section>
+
+        {/* ─── TÉMOIGNAGES / CITATIONS ─── */}
+        <section className="testimonials">
+          <div className="testimonials-header">
+            <h2 className="testimonials-title">Ils parlent de notre travail</h2>
+            <span className="testimonials-tag">Témoignages & citations</span>
+          </div>
+
+          <div className="testimonials-strip">
+          {fallbackQuotes.map((q, index) => (
+            <div key={index} className="testimonial-card">
+              <div className="testimonial-subject">Citation</div>
+              <div className="testimonial-message">{q.text}</div>
+              <div className="testimonial-author">— {q.author}</div>
+            </div>
+             ))}
           </div>
         </section>
 

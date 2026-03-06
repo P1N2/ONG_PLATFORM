@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { type FormEvent, useState } from "react"
 import { useRouter } from "next/navigation"
 import { loginAdmin } from "@/lib/api"
 
@@ -11,13 +11,14 @@ export default function AdminLogin() {
   const [error, setError]       = useState("")
   const [loading, setLoading]   = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
     try {
-      const admin = await loginAdmin({ email, password })
-      localStorage.setItem("adminLogged", JSON.stringify(admin))
+      const result = await loginAdmin({ email, password })
+      sessionStorage.setItem("adminAuth", JSON.stringify(result))
+      sessionStorage.setItem("adminLogged", JSON.stringify(result.admin))
       router.push("/admin/dashboard")
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Identifiants incorrects.")
@@ -235,7 +236,7 @@ export default function AdminLogin() {
           </h2>
           <p className="login-visual-sub">
             Accédez à votre tableau de bord pour gérer les activités,
-            les services et les messages de l'ONG.
+            les services et les messages de l&apos;ONG.
           </p>
         </div>
 

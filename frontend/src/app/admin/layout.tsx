@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { useEffect } from "react"
+import { usePathname, useRouter } from "next/navigation"
 
 const navLinks = [
   { href: "/admin/dashboard",   label: "Dashboard",   icon: "▪" },
@@ -11,8 +12,24 @@ const navLinks = [
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const pathname = usePathname()
   const hideSidebar = pathname === "/admin/login"
+
+  useEffect(() => {
+    if (pathname === "/admin/login") return
+    const logged = sessionStorage.getItem("adminLogged")
+    const auth = sessionStorage.getItem("adminAuth")
+    if (!logged || !auth) {
+      router.replace("/admin/login")
+    }
+  }, [pathname, router])
+
+  const logout = () => {
+    sessionStorage.removeItem("adminAuth")
+    sessionStorage.removeItem("adminLogged")
+    router.replace("/admin/login")
+  }
 
   return (
     <>
@@ -190,6 +207,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           background: #C0392B;
         }
 
+        .admin-topbar-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .admin-topbar-btn {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: transparent;
+          padding: 8px 12px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.68rem;
+          font-weight: 500;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: #1A1612;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+        }
+        .admin-topbar-btn:hover { background: rgba(26,22,18,0.06); }
+        .admin-topbar-btn.danger { border-color: rgba(192,57,43,0.25); color: #C0392B; }
+        .admin-topbar-btn.danger:hover { background: rgba(192,57,43,0.06); }
+
         /* Content area */
         .admin-content {
           flex: 1;
@@ -243,7 +287,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   {navLinks.find(l => l.href === pathname)?.label ?? "Page"}
                 </strong>
               </span>
-              <span className="admin-topbar-badge">En ligne</span>
+              <div className="admin-topbar-actions">
+                <Link href="/" className="admin-topbar-btn">
+                  Accueil
+                </Link>
+                <button className="admin-topbar-btn danger" onClick={logout}>
+                  Déconnexion
+                </button>
+                <span className="admin-topbar-badge">En ligne</span>
+              </div>
             </div>
           )}
 

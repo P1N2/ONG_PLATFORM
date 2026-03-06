@@ -1,5 +1,6 @@
 const pool = require('../db');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 // ===================== CREATE ADMIN =====================
 exports.create = async (req, res) => {
@@ -45,8 +46,22 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    // Retourner seulement les infos admin (plus de token)
-    res.json({ id: admin.id, name: admin.name, email: admin.email });
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('JWT_SECRET manquant dans .env');
+      return res.status(500).json({ message: 'Configuration JWT manquante' });
+    }
+
+    const token = jwt.sign(
+      { id: admin.id, email: admin.email },
+      secret,
+      { expiresIn: '2h' }
+    );
+
+    res.json({
+      token,
+      admin: { id: admin.id, name: admin.name, email: admin.email },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Erreur serveur' });

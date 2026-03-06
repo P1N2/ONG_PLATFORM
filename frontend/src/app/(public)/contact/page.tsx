@@ -16,6 +16,8 @@ export default function Contact() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
 
+
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -234,6 +236,8 @@ export default function Contact() {
         .ct-field textarea::placeholder {
           color: rgba(26,22,18,0.25);
         }
+
+       
 
         /* Bouton */
         .ct-submit {

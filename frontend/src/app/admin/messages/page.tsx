@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { type FormEvent, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getContactsAdmin } from "@/lib/api"
+import { createContact, deleteContact, getContactsAdmin, updateContact } from "@/lib/api"
 
 type ContactMessage = {
   id: number
@@ -29,17 +29,93 @@ export default function AdminMessages() {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [saving, setSaving]     = useState(false)
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create")
+  const [editingId, setEditingId] = useState<number | null>(null)
+
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [subject, setSubject] = useState("")
+  const [message, setMessage] = useState("")
+
+  const refresh = async () => {
+    const data = await getContactsAdmin()
+    setMessages(data)
+  }
 
   useEffect(() => {
-    if (!localStorage.getItem("adminLogged")) {
+    if (!sessionStorage.getItem("adminLogged")) {
       router.push("/admin/login")
       return
     }
-    getContactsAdmin()
-      .then(setMessages)
+    refresh()
       .catch(() => setError("Impossible de récupérer les messages."))
       .finally(() => setLoading(false))
   }, [router])
+
+  const openCreate = () => {
+    setModalMode("create")
+    setEditingId(null)
+    setName("")
+    setEmail("")
+    setSubject("")
+    setMessage("")
+    setModalOpen(true)
+  }
+
+  const openEdit = (m: ContactMessage) => {
+    setModalMode("edit")
+    setEditingId(m.id)
+    setName(m.name)
+    setEmail(m.email)
+    setSubject(m.subject ?? "")
+    setMessage(m.message)
+    setModalOpen(true)
+  }
+
+  const closeModal = () => {
+    if (saving) return
+    setModalOpen(false)
+  }
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      if (modalMode === "create") {
+        await createContact({ name, email, subject: subject || undefined, message })
+      } else if (editingId != null) {
+        await updateContact(editingId, { name, email, subject: subject || undefined, message })
+      }
+      await refresh()
+      setModalOpen(false)
+    } catch (err) {
+      console.error(err)
+      setError("Une erreur est survenue lors de l’enregistrement.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onDelete = async (id: number) => {
+    const ok = confirm("Supprimer ce message ?")
+    if (!ok) return
+    setSaving(true)
+    setError(null)
+    try {
+      await deleteContact(id)
+      if (expanded === id) setExpanded(null)
+      await refresh()
+    } catch (err) {
+      console.error(err)
+      setError("Impossible de supprimer le message.")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <>
@@ -71,6 +147,27 @@ export default function AdminMessages() {
           text-transform: uppercase;
           color: #8C7B6B;
         }
+
+        .am-btn {
+          border: 1px solid rgba(26,22,18,0.15);
+          background: #1A1612;
+          color: #F5F0E8;
+          padding: 0.7rem 1rem;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.72rem;
+          font-weight: 500;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: transform 0.15s, background 0.2s, opacity 0.2s;
+          white-space: nowrap;
+          height: 40px;
+          align-self: flex-start;
+        }
+        .am-btn:hover { background: #2A241E; transform: translateY(-1px); }
+        .am-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .am-btn.secondary { background: transparent; color: #1A1612; }
+        .am-btn.secondary:hover { background: rgba(26,22,18,0.06); }
 
         /* ── STATES ── */
         .am-state {
@@ -229,6 +326,31 @@ export default function AdminMessages() {
           align-items: center;
           gap: 1.5rem;
         }
+
+        .am-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .am-action {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: transparent;
+          color: #1A1612;
+          padding: 6px 10px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.68rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+          white-space: nowrap;
+        }
+        .am-action:hover { background: rgba(26,22,18,0.06); }
+        .am-action.danger { border-color: rgba(192,57,43,0.25); color: #C0392B; }
+        .am-action.danger:hover { background: rgba(192,57,43,0.06); }
+        .am-action:disabled { opacity: 0.6; cursor: not-allowed; }
+
         .am-id-badge {
           font-family: 'DM Sans', sans-serif;
           font-size: 0.58rem;
@@ -253,16 +375,90 @@ export default function AdminMessages() {
           transition: color 0.2s;
         }
         .am-reply-link:hover { color: #C0392B; }
+
+        /* ── MODAL ── */
+        .am-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1.25rem;
+          z-index: 50;
+        }
+        .am-modal {
+          width: min(720px, 100%);
+          background: #F5F0E8;
+          border: 1px solid rgba(26,22,18,0.12);
+        }
+        .am-modal-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem 1.25rem;
+          border-bottom: 1px solid rgba(26,22,18,0.10);
+        }
+        .am-modal-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: #1A1612;
+        }
+        .am-modal-close {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: transparent;
+          width: 34px;
+          height: 34px;
+          cursor: pointer;
+        }
+        .am-form {
+          padding: 1.25rem;
+          display: grid;
+          gap: 1rem;
+        }
+        .am-label {
+          display: grid;
+          gap: 6px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.72rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(26,22,18,0.65);
+        }
+        .am-input, .am-textarea {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: #fff;
+          padding: 0.7rem 0.75rem;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 300;
+          color: #1A1612;
+          outline: none;
+        }
+        .am-textarea { resize: vertical; }
+        .am-form-actions {
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+          padding-top: 0.5rem;
+        }
       `}</style>
 
       {/* ── HEADER ── */}
       <div className="am-header">
-        <h1 className="am-title">Messages <em>reçus</em></h1>
-        {!loading && !error && (
-          <span className="am-count">
-            {messages.length} message{messages.length !== 1 ? "s" : ""}
-          </span>
-        )}
+        <div>
+          <h1 className="am-title">Messages <em>reçus</em></h1>
+          {!loading && !error && (
+            <span className="am-count">
+              {messages.length} message{messages.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+        <button className="am-btn" onClick={openCreate} disabled={saving}>
+          Ajouter
+        </button>
       </div>
 
       {/* ── LOADING ── */}
@@ -318,6 +514,28 @@ export default function AdminMessages() {
                   <p className="am-row-message">{m.message}</p>
                   <div className="am-row-footer">
                     <span className="am-id-badge">ID #{m.id}</span>
+                    <div className="am-actions">
+                      <button
+                        className="am-action"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openEdit(m)
+                        }}
+                        disabled={saving}
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        className="am-action danger"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(m.id)
+                        }}
+                        disabled={saving}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
                     <a
                       href={`mailto:${m.email}?subject=Re: ${m.subject ?? ""}`}
                       className="am-reply-link"
@@ -331,6 +549,62 @@ export default function AdminMessages() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── MODAL ── */}
+      {modalOpen && (
+        <div className="am-modal-overlay" onClick={closeModal}>
+          <div className="am-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="am-modal-head">
+              <div className="am-modal-title">
+                {modalMode === "create" ? "Ajouter un message" : "Modifier le message"}
+              </div>
+              <button className="am-modal-close" onClick={closeModal} disabled={saving}>
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={onSubmit} className="am-form">
+              <label className="am-label">
+                Nom
+                <input className="am-input" value={name} onChange={(e) => setName(e.target.value)} required />
+              </label>
+              <label className="am-label">
+                Email
+                <input
+                  className="am-input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="am-label">
+                Sujet (optionnel)
+                <input className="am-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
+              </label>
+              <label className="am-label">
+                Message
+                <textarea
+                  className="am-textarea"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  required
+                  rows={6}
+                />
+              </label>
+
+              <div className="am-form-actions">
+                <button type="button" className="am-btn secondary" onClick={closeModal} disabled={saving}>
+                  Annuler
+                </button>
+                <button type="submit" className="am-btn" disabled={saving}>
+                  {saving ? "Enregistrement..." : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </>

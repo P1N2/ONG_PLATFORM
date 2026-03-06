@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { type FormEvent, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getServices } from "@/lib/api"
+import { createService, deleteService, getServices, updateService } from "@/lib/api"
 
 type Service = {
   id: number
@@ -15,17 +15,85 @@ export default function AdminServices() {
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
+  const [saving, setSaving]     = useState(false)
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create")
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+
+  const refresh = async () => {
+    const data = await getServices()
+    setServices(data)
+  }
 
   useEffect(() => {
-    if (!localStorage.getItem("adminLogged")) {
+    if (!sessionStorage.getItem("adminLogged")) {
       router.push("/admin/login")
       return
     }
-    getServices()
-      .then(setServices)
+    refresh()
       .catch(() => setError("Impossible de récupérer les services."))
       .finally(() => setLoading(false))
   }, [router])
+
+  const openCreate = () => {
+    setModalMode("create")
+    setEditingId(null)
+    setTitle("")
+    setDescription("")
+    setModalOpen(true)
+  }
+
+  const openEdit = (s: Service) => {
+    setModalMode("edit")
+    setEditingId(s.id)
+    setTitle(s.title)
+    setDescription(s.description)
+    setModalOpen(true)
+  }
+
+  const closeModal = () => {
+    if (saving) return
+    setModalOpen(false)
+  }
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      if (modalMode === "create") {
+        await createService({ title, description })
+      } else if (editingId != null) {
+        await updateService(editingId, { title, description })
+      }
+      await refresh()
+      setModalOpen(false)
+    } catch (err) {
+      console.error(err)
+      setError("Une erreur est survenue lors de l’enregistrement.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onDelete = async (id: number) => {
+    const ok = confirm("Supprimer ce service ?")
+    if (!ok) return
+    setSaving(true)
+    setError(null)
+    try {
+      await deleteService(id)
+      await refresh()
+    } catch (err) {
+      console.error(err)
+      setError("Impossible de supprimer le service.")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <>
@@ -57,6 +125,27 @@ export default function AdminServices() {
           text-transform: uppercase;
           color: #8C7B6B;
         }
+
+        .as-btn {
+          border: 1px solid rgba(26,22,18,0.15);
+          background: #1A1612;
+          color: #F5F0E8;
+          padding: 0.7rem 1rem;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.72rem;
+          font-weight: 500;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: transform 0.15s, background 0.2s, opacity 0.2s;
+          white-space: nowrap;
+          height: 40px;
+          align-self: flex-start;
+        }
+        .as-btn:hover { background: #2A241E; transform: translateY(-1px); }
+        .as-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .as-btn.secondary { background: transparent; color: #1A1612; }
+        .as-btn.secondary:hover { background: rgba(26,22,18,0.06); }
 
         /* ── STATES ── */
         .as-state {
@@ -214,16 +303,112 @@ export default function AdminServices() {
           opacity: 1;
           transform: translateX(0);
         }
+
+        .as-actions {
+          display: flex;
+          gap: 8px;
+        }
+        .as-action {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: transparent;
+          color: #1A1612;
+          padding: 6px 10px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.68rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+        }
+        .as-action:hover { background: rgba(26,22,18,0.06); }
+        .as-action.danger { border-color: rgba(192,57,43,0.25); color: #C0392B; }
+        .as-action.danger:hover { background: rgba(192,57,43,0.06); }
+        .as-action:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* ── MODAL ── */
+        .as-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1.25rem;
+          z-index: 50;
+        }
+        .as-modal {
+          width: min(720px, 100%);
+          background: #F5F0E8;
+          border: 1px solid rgba(26,22,18,0.12);
+        }
+        .as-modal-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem 1.25rem;
+          border-bottom: 1px solid rgba(26,22,18,0.10);
+        }
+        .as-modal-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: #1A1612;
+        }
+        .as-modal-close {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: transparent;
+          width: 34px;
+          height: 34px;
+          cursor: pointer;
+        }
+        .as-form {
+          padding: 1.25rem;
+          display: grid;
+          gap: 1rem;
+        }
+        .as-label {
+          display: grid;
+          gap: 6px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.72rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(26,22,18,0.65);
+        }
+        .as-input, .as-textarea {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: #fff;
+          padding: 0.7rem 0.75rem;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 300;
+          color: #1A1612;
+          outline: none;
+        }
+        .as-textarea { resize: vertical; }
+        .as-form-actions {
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+          padding-top: 0.5rem;
+        }
       `}</style>
 
       {/* ── HEADER ── */}
       <div className="as-header">
-        <h1 className="as-title">Nos <em>Services</em></h1>
-        {!loading && !error && (
-          <span className="as-count">
-            {services.length} service{services.length !== 1 ? "s" : ""}
-          </span>
-        )}
+        <div>
+          <h1 className="as-title">Nos <em>Services</em></h1>
+          {!loading && !error && (
+            <span className="as-count">
+              {services.length} service{services.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+        <button className="as-btn" onClick={openCreate} disabled={saving}>
+          Ajouter
+        </button>
       </div>
 
       {/* ── LOADING ── */}
@@ -262,11 +447,64 @@ export default function AdminServices() {
 
               <div className="as-card-footer">
                 <span className="as-id-badge">ID #{service.id}</span>
-                <span className="as-card-arrow">→</span>
+                <div className="as-actions">
+                  <button className="as-action" onClick={() => openEdit(service)} disabled={saving}>
+                    Modifier
+                  </button>
+                  <button className="as-action danger" onClick={() => onDelete(service.id)} disabled={saving}>
+                    Supprimer
+                  </button>
+                </div>
               </div>
 
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── MODAL ── */}
+      {modalOpen && (
+        <div className="as-modal-overlay" onClick={closeModal}>
+          <div className="as-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="as-modal-head">
+              <div className="as-modal-title">
+                {modalMode === "create" ? "Ajouter un service" : "Modifier le service"}
+              </div>
+              <button className="as-modal-close" onClick={closeModal} disabled={saving}>
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={onSubmit} className="as-form">
+              <label className="as-label">
+                Titre
+                <input
+                  className="as-input"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="as-label">
+                Description
+                <textarea
+                  className="as-textarea"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                  rows={6}
+                />
+              </label>
+              <div className="as-form-actions">
+                <button type="button" className="as-btn secondary" onClick={closeModal} disabled={saving}>
+                  Annuler
+                </button>
+                <button type="submit" className="as-btn" disabled={saving}>
+                  {saving ? "Enregistrement..." : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </>

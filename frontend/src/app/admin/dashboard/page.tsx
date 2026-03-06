@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getActivitiesWithImages, getServices } from "@/lib/api"
+import { getActivitiesWithImages, getContactsAdmin, getServices } from "@/lib/api"
 
 type Stats = {
   activities: number
@@ -22,18 +22,18 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!localStorage.getItem("adminLogged")) {
+    if (!sessionStorage.getItem("adminLogged")) {
       router.push("/admin/login")
       return
     }
 
     // Charge les compteurs en parallèle
-    Promise.all([getActivitiesWithImages(), getServices()])
-      .then(([activities, services]) => {
+    Promise.all([getActivitiesWithImages(), getServices(), getContactsAdmin()])
+      .then(([activities, services, contacts]) => {
         setStats({
           activities: activities.length,
           services:   services.length,
-          messages:   0,
+          messages:   contacts.length,
         })
       })
       .catch(console.error)
@@ -143,6 +143,31 @@ export default function AdminDashboard() {
           color: #8C7B6B;
         }
 
+        .dash-stat-actions {
+          margin-top: 1rem;
+          display: flex;
+          gap: 10px;
+        }
+        .dash-btn {
+          border: 1px solid rgba(26,22,18,0.12);
+          background: transparent;
+          color: #1A1612;
+          padding: 8px 12px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.68rem;
+          font-weight: 500;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, transform 0.15s;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+        }
+        .dash-btn:hover { background: rgba(26,22,18,0.06); transform: translateY(-1px); }
+
         /* ── QUICK LINKS ── */
         .dash-section-label {
           font-family: 'DM Sans', sans-serif;
@@ -208,15 +233,15 @@ export default function AdminDashboard() {
       <div className="dash-header">
         <div className="dash-eyebrow">Administration</div>
         <h1 className="dash-title">Tableau de <em>bord</em></h1>
-        <p className="dash-sub">Bienvenue dans l'espace d'administration de l'ONG Platform.</p>
+        <p className="dash-sub">Bienvenue dans l&apos;espace d&apos;administration de l&apos;ONG Platform.</p>
       </div>
 
       {/* ── STATS ── */}
       <div className="dash-stats">
         {[
-          { label: "Activités",  value: stats?.activities, hint: "événements enregistrés" },
-          { label: "Services",   value: stats?.services,   hint: "programmes actifs" },
-          { label: "Messages",   value: stats?.messages,   hint: "contacts reçus" },
+          { label: "Activités",  value: stats?.activities, hint: "événements enregistrés", href: "/admin/activities" },
+          { label: "Services",   value: stats?.services,   hint: "programmes actifs",     href: "/admin/services" },
+          { label: "Messages",   value: stats?.messages,   hint: "contacts reçus",        href: "/admin/messages" },
         ].map((s) => (
           <div key={s.label} className="dash-stat">
             <span className="dash-stat-label">{s.label}</span>
@@ -224,6 +249,9 @@ export default function AdminDashboard() {
               {loading ? "" : s.value}
             </span>
             <span className="dash-stat-hint">{s.hint}</span>
+            <div className="dash-stat-actions">
+              <a className="dash-btn" href={s.href}>Voir</a>
+            </div>
           </div>
         ))}
       </div>
