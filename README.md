@@ -52,7 +52,7 @@ frontend/
  * src
   * app
    * (public)
-    * admin
+   * admin
        * favicon.ico
        * globals.css
        * layout.tsx
