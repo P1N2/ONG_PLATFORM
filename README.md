@@ -34,31 +34,33 @@ PostgreSQL
  Architecture du projet
 
 
-project-root/
+ONG
 
-Backend/
- ├ node_modules
- ├ routes
- ├ .env
- ├ db.js
- ├ schema.sql
- ├ server.js
- ├ package.json
+Backend
+ node_modules
+ controllers
+ middleware
+ routes
+ .env
+ db.js
+ schema.sql
+ server.js
+ package.json
 
 frontend/
- ├ public
- ├ src
- │   ├ app
- │   │   ├ (public)
- │   │   ├ admin
- │   │   ├ favicon.ico
- │   │   ├ globals.css
- │   │   └ layout.tsx
- │   ├ components
- │   ├ lib
- │   └ types
- ├ next.config.mjs
- ├ package.json
+ public
+ src
+  app
+   (public)
+    admin
+       favicon.ico
+       globals.css
+       layout.tsx
+ components
+ lib
+ types
+ next.config.mjs
+ package.json
 
 Installation
 
